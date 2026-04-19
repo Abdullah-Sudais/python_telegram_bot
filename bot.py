@@ -2,8 +2,9 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import requests
 import asyncio
+import os
 
-TOKEN = "8690974517:AAFAFsmckTrL0GWOPVocp6DNsAidQgyzRU4"
+TOKEN = os.getenv("TOKEN")
 
 user_target = {}
 user_data = {}
