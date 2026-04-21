@@ -50,7 +50,8 @@ def load_data():
 
 # ✅ Set price command
 async def set_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.chat_id
+    user_id = str(update.message.chat_id)
+    # user_id = update.message.chat_id
 
     try:
         coin = context.args[0].upper() + "USDT"
@@ -76,6 +77,9 @@ def get_price(symbol):
 
 # ✅ Background task
 async def check_price(app):
+
+    
+
     while True:
         try:
             # --- Target price alerts ---
@@ -86,10 +90,7 @@ async def check_price(app):
                     price = get_price(coin)
 
                     if price >= target:
-                        await app.bot.send_message(
-                            chat_id=user_id,
-                            text=f"🚀 {coin} reached {price}"
-                        )
+                        await app.bot.send_message(chat_id=int(user_id), text=f"🚀 {coin} reached {price}")
                         to_remove.append(coin)
 
                 for coin in to_remove:              # ✅ delete after loop
@@ -109,7 +110,7 @@ async def check_price(app):
 
                 if abs(btc_price - last_price) >= step:
                     await app.bot.send_message(
-                        chat_id=user_id,
+                        chat_id=int(user_id),
                         text=f"📊 BTC moved to {btc_price}"
                     )
                     user_data[user_id]["last_price"] = btc_price
@@ -126,7 +127,7 @@ async def start_background(app):
 
 
 async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.chat_id
+    user_id = str(update.message.chat_id)
     user_target.pop(user_id, None)  # ✅ clear target tracking if setting step
 
     try:
@@ -146,7 +147,7 @@ async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Usage: /track 100")
 
 async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.chat_id
+    user_id = str(update.message.chat_id)
 
     if user_id in user_target or user_id in user_data:
         user_target.pop(user_id, None)
