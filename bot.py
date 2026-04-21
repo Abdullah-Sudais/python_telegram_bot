@@ -51,7 +51,6 @@ def get_price(symbol):
 # ✅ Background task
 async def check_price(app):
     while True:
-        price = get_price()
 
         for user_id, coins in list(user_target.items()):
             for coin, target in coins.items():
@@ -62,20 +61,24 @@ async def check_price(app):
                         chat_id=user_id,
                         text=f"🚀 {coin} reached {price}"
                     )
-
                     del user_target[user_id][coin]
 
+                    if not user_target[user_id]:
+                        del user_target[user_id]
+
+        btc_price = get_price("BTCUSDT")
+        
         for user_id, data in list(user_data.items()):
             step = data["step"]
             last_price = data["last_price"]
 
-            if abs(price - last_price) >= step:
+            if abs(btc_price - last_price) >= step:
                 await app.bot.send_message(
                     chat_id=user_id,
-                    text=f"📊 BTC moved to {price}"
+                    text=f"📊 BTC moved to {btc_price}"
                 )
 
-                user_data[user_id]["last_price"] = price
+                user_data[user_id]["last_price"] = btc_price
 
         await asyncio.sleep(10)
 
@@ -91,14 +94,14 @@ async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         step = float(context.args[0])
 
-        price = get_price()
+        btc_price = get_price("BTCUSDT")
 
         user_data[user_id] = {
             "step": step,
-            "last_price": price
+            "last_price": btc_price
         }
 
-        await update.message.reply_text(f"📊 Current Price: {price} Tracking every {step}$ change")
+        await update.message.reply_text(f"📊 Current Price: {btc_price} Tracking every {step}$ change")
 
     except:
         await update.message.reply_text("Usage: /track 100")
