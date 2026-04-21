@@ -27,25 +27,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def set_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
 
-    user_data.pop(user_id, None)  # ✅ clear step tracking if setting target
-
-    if len(context.args) == 0:
-        if user_id in user_target:
-            await update.message.reply_text(f"✅ Tracking BTC. Alert at {user_target[user_id]}")
-        else:
-            await update.message.reply_text("✅ Tracking BTC. No alert set.")
-        return
-
     try:
-        target = float(context.args[0])
-        user_target[user_id] = target
-        await update.message.reply_text(f"Target set to {target}")
-    except ValueError:
-        await update.message.reply_text("Please enter a valid number")
+        coin = context.args[0].upper() + "USDT"
+        target = float(context.args[1])
+
+        if user_id not in user_target:
+            user_target[user_id] = {}
+
+        user_target[user_id][coin] = target
+
+        await update.message.reply_text(f"✅ {coin} target set at {target}")
+
+    except:
+        await update.message.reply_text("Usage: /set BTC 80000")
 
 # ✅ Keep this SIMPLE (sync function)
-def get_price():
-    url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+def get_price(symbol):
+    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     response = requests.get(url)
     data = response.json()
     return float(data['price'])
@@ -55,13 +53,17 @@ async def check_price(app):
     while True:
         price = get_price()
 
-        for user_id, target in list(user_target.items()):
-            if price >= target:
-                await app.bot.send_message(
-                    chat_id=user_id,
-                    text=f"🚀 BTC reached {price}"
-                )
-                del user_target[user_id]  # ✅ prevent spam
+        for user_id, coins in list(user_target.items()):
+            for coin, target in coins.items():
+                price = get_price(coin)
+
+                if price >= target:
+                    await app.bot.send_message(
+                        chat_id=user_id,
+                        text=f"🚀 {coin} reached {price}"
+                    )
+
+                    del user_target[user_id][coin]
 
         for user_id, data in list(user_data.items()):
             step = data["step"]
