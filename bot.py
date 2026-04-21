@@ -14,7 +14,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
         "👋 Welcome to BTC Alert Bot!\n\n"
         "📌 Available Commands:\n"
-        "/set <price> - Set target price\n"
+        "/set <coin> <price> - Set target price e.g., /set BTC 70000\n"
         "/track <step> - Track price changes\n"
         # "/help - Show this menu again\n"
         "/stop - Stop tracking\n"
