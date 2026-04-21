@@ -168,7 +168,7 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No active tracking.")
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.chat_id
+    user_id = str(update.message.chat_id)
 
     message = "📊 Your Active Tracking:\n\n"
 
