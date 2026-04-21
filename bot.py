@@ -51,34 +51,43 @@ def get_price(symbol):
 # ✅ Background task
 async def check_price(app):
     while True:
+        try:
+            # --- Target price alerts ---
+            for user_id, coins in list(user_target.items()):
+                to_remove = []
 
-        for user_id, coins in list(user_target.items()):
-            for coin, target in coins.items():
-                price = get_price(coin)
+                for coin, target in list(coins.items()):  # ✅ snapshot
+                    price = get_price(coin)
 
-                if price >= target:
-                    await app.bot.send_message(
-                        chat_id=user_id,
-                        text=f"🚀 {coin} reached {price}"
-                    )
+                    if price >= target:
+                        await app.bot.send_message(
+                            chat_id=user_id,
+                            text=f"🚀 {coin} reached {price}"
+                        )
+                        to_remove.append(coin)
+
+                for coin in to_remove:              # ✅ delete after loop
                     del user_target[user_id][coin]
 
-                    if not user_target[user_id]:
-                        del user_target[user_id]
+                if user_id in user_target and not user_target[user_id]:
+                    del user_target[user_id]
 
-        btc_price = get_price("BTCUSDT")
-        
-        for user_id, data in list(user_data.items()):
-            step = data["step"]
-            last_price = data["last_price"]
+            # --- Step tracking ---
+            btc_price = get_price("BTCUSDT")
 
-            if abs(btc_price - last_price) >= step:
-                await app.bot.send_message(
-                    chat_id=user_id,
-                    text=f"📊 BTC moved to {btc_price}"
-                )
+            for user_id, data in list(user_data.items()):
+                step = data["step"]
+                last_price = data["last_price"]
 
-                user_data[user_id]["last_price"] = btc_price
+                if abs(btc_price - last_price) >= step:
+                    await app.bot.send_message(
+                        chat_id=user_id,
+                        text=f"📊 BTC moved to {btc_price}"
+                    )
+                    user_data[user_id]["last_price"] = btc_price
+
+        except Exception as e:
+            print(f"[check_price error] {e}")  # ✅ never die silently
 
         await asyncio.sleep(10)
 
