@@ -17,6 +17,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📌 Available Commands:\n"
         "/set <coin> <price> - Set target price e.g., /set BTC 70000\n"
         "/track <step> - Track price changes\n"
+        "/status - View your settings\n"
         # "/help - Show this menu again\n"
         "/stop - Stop tracking\n"
     )
@@ -43,7 +44,11 @@ def load_data():
             data = json.load(f)
             user_target = data.get("targets", {})
             user_data = data.get("tracking", {})
-    except:
+    except FileNotFoundError:
+        user_target = {}
+        user_data = {}
+    except Exception as e:
+        print(f"[load_data error] {e}")
         user_target = {}
         user_data = {}
 
@@ -70,16 +75,18 @@ async def set_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ✅ Keep this SIMPLE (sync function)
 def get_price(symbol):
-    url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-    response = requests.get(url)
-    data = response.json()
-    return float(data['price'])
+
+    try:
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
+        response = requests.get(url)
+        data = response.json()
+        return float(data['price'])
+    except Exception as e:
+        print(f"[get_price error] {e}")
+        return None
 
 # ✅ Background task
 async def check_price(app):
-
-    
-
     while True:
         try:
             # --- Target price alerts ---
@@ -88,6 +95,8 @@ async def check_price(app):
 
                 for coin, target in list(coins.items()):  # ✅ snapshot
                     price = get_price(coin)
+                    if price is None:
+                        continue 
 
                     if price >= target:
                         await app.bot.send_message(chat_id=int(user_id), text=f"🚀 {coin} reached {price}")
@@ -128,7 +137,8 @@ async def start_background(app):
 
 async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.message.chat_id)
-    user_target.pop(user_id, None)  # ✅ clear target tracking if setting step
+
+    # user_target.pop(user_id, None)  # ✅ clear target tracking if setting step
 
     try:
         step = float(context.args[0])
@@ -157,6 +167,30 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("No active tracking.")
 
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.chat_id
+
+    message = "📊 Your Active Tracking:\n\n"
+
+    # Targets
+    if user_id in user_target:
+        message += "🎯 Targets:\n"
+        for coin, price in user_target[user_id].items():
+            message += f"{coin} → {price}\n"
+    else:
+        message += "🎯 No targets set\n"
+
+    message += "\n"
+
+    # Tracking
+    if user_id in user_data:
+        step = user_data[user_id]["step"]
+        message += f"📈 BTC Tracking every {step}$\n"
+    else:
+        message += "📈 No tracking active\n"
+
+    await update.message.reply_text(message)
+
 # ✅ Build app
 
 load_data()
@@ -167,6 +201,7 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("stop", stop))
 app.add_handler(CommandHandler("set", set_price))
 app.add_handler(CommandHandler("track", track))
+app.add_handler(CommandHandler("status", status))
 
 # ✅ Run background task after bot starts
 app.post_init = start_background
