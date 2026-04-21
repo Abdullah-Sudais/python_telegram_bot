@@ -3,6 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import requests
 import asyncio
 import os
+import json
 
 TOKEN = os.getenv("TOKEN")
 
@@ -23,6 +24,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(message)
 
+# save fucntion
+def save_data():
+    data = {
+        "targets": user_target,
+        "tracking": user_data
+    }
+
+    with open("data.json", "w") as f:
+        json.dump(data, f)
+
+#json.loadad function
+def load_data():
+    global user_target, user_data
+
+    try:
+        with open("data.json", "r") as f:
+            data = json.load(f)
+            user_target = data.get("targets", {})
+            user_data = data.get("tracking", {})
+    except:
+        user_target = {}
+        user_data = {}
+
+
 # ✅ Set price command
 async def set_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.chat_id
@@ -35,6 +60,7 @@ async def set_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_target[user_id] = {}
 
         user_target[user_id][coin] = target
+        save_data()
 
         await update.message.reply_text(f"✅ {coin} target set at {target}")
 
@@ -68,9 +94,11 @@ async def check_price(app):
 
                 for coin in to_remove:              # ✅ delete after loop
                     del user_target[user_id][coin]
+                    save_data()
 
                 if user_id in user_target and not user_target[user_id]:
                     del user_target[user_id]
+
 
             # --- Step tracking ---
             btc_price = get_price("BTCUSDT")
@@ -85,6 +113,7 @@ async def check_price(app):
                         text=f"📊 BTC moved to {btc_price}"
                     )
                     user_data[user_id]["last_price"] = btc_price
+                    save_data()
 
         except Exception as e:
             print(f"[check_price error] {e}")  # ✅ never die silently
@@ -109,6 +138,7 @@ async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "step": step,
             "last_price": btc_price
         }
+        save_data()
 
         await update.message.reply_text(f"📊 Current Price: {btc_price} Tracking every {step}$ change")
 
@@ -121,11 +151,15 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in user_target or user_id in user_data:
         user_target.pop(user_id, None)
         user_data.pop(user_id, None)
+        save_data()
         await update.message.reply_text("Tracking stopped.")
     else:
         await update.message.reply_text("No active tracking.")
 
 # ✅ Build app
+
+load_data()
+
 app = ApplicationBuilder().token(TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
