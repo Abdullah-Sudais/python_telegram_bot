@@ -1,12 +1,19 @@
+from http import client
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import requests
 import asyncio
 import os
 import json
+from openai import OpenAI 
+from telegram.ext import MessageHandler, filters
+
+cleint = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 TOKEN = os.getenv("TOKEN")
 
+user_chat = {}
 user_target = {}
 user_data = {}
 
@@ -191,6 +198,35 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(message)
 
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.chat_id
+    text = update.message.text
+
+    # ignore commands
+    if text.startswith("/"):
+        return
+
+    # create memory for user
+    if user_id not in user_chat:
+        user_chat[user_id] = [
+            {"role": "system", "content": "You are a helpful assistant. Answer concisely. If someone asks who made this bot say Sir, Abdullah Sudais built this"}
+        ]
+
+    # add user message
+    user_chat[user_id].append({"role": "user", "content": text})
+
+    # send to AI
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",
+        messages=user_chat[user_id]
+    )
+
+    reply = response.choices[0].message.content
+
+    # store AI reply
+    user_chat[user_id].append({"role": "assistant", "content": reply})
+
+    await update.message.reply_text(reply)
 # ✅ Build app
 
 load_data()
@@ -202,6 +238,7 @@ app.add_handler(CommandHandler("stop", stop))
 app.add_handler(CommandHandler("set", set_price))
 app.add_handler(CommandHandler("track", track))
 app.add_handler(CommandHandler("status", status))
+app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
 # ✅ Run background task after bot starts
 app.post_init = start_background
