@@ -197,29 +197,48 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    MAX_HISTORY = 10
+
+    GPT_INSTRUCTION = "You are a helpful assistant that answers user questions about cryptocurrency prices and trends. Provide concise and accurate information based on the user's query. If the user asks for price information, give the latest price of the specified cryptocurrency. If they ask for trends, provide a brief analysis of recent price movements. Always be polite and informative. creater of this bot is Abdullah Sudais"
+
     user_id = str(update.message.chat_id)
     text = update.message.text
 
     # ignore commands
     if text.startswith("/"):
         return
+    if len(text) > 500:
+        await update.message.reply_text("Message too long.")
+        return
 
     # create memory for user
     if user_id not in user_chat:
         user_chat[user_id] = [
-            {"role": "system", "content": "You are a helpful assistant. Answer concisely. If someone asks who made this bot say Sir, Abdullah Sudais built this"}
+            {"role": "system", "content": GPT_INSTRUCTION}
         ]
 
     # add user message
     user_chat[user_id].append({"role": "user", "content": text})
 
-    # send to AI
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=user_chat[user_id]
-    )
+    system_msg = user_chat[user_id][0]
 
-    reply = response.choices[0].message.content
+    if len(user_chat[user_id]) > MAX_HISTORY:
+        user_chat[user_id] = [system_msg] + user_chat[user_id][-MAX_HISTORY:]
+        
+
+    # send to AI
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=user_chat[user_id]
+        )
+
+        reply = response.choices[0].message.content
+    except Exception as e:
+        print(f"[AI error] {e}")
+        reply = "Sorry, I'm having trouble processing your request right now."
+    
 
     # store AI reply
     user_chat[user_id].append({"role": "assistant", "content": reply})
