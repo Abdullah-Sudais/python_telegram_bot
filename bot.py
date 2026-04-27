@@ -1,5 +1,3 @@
-from http import client
-
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import requests
@@ -9,13 +7,13 @@ import json
 from openai import OpenAI 
 from telegram.ext import MessageHandler, filters
 
-cleint = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 TOKEN = os.getenv("TOKEN")
 
-user_chat = {}
 user_target = {}
 user_data = {}
+user_chat = {}
 
 # ✅ Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -238,6 +236,7 @@ app.add_handler(CommandHandler("stop", stop))
 app.add_handler(CommandHandler("set", set_price))
 app.add_handler(CommandHandler("track", track))
 app.add_handler(CommandHandler("status", status))
+
 app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
 # ✅ Run background task after bot starts
